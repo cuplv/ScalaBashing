@@ -4,6 +4,8 @@ package edu.colorado.plv.fixr.bash
   * Created by edmund on 3/3/17.
   */
 
+import java.io.IOException
+
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -77,8 +79,10 @@ object Bash {
 abstract class Bashable(cmd: String) {
   var index = 1
   var resultLogger: Logger = null
+
   def setIndex(newIndex: Int): Bashable = { index = newIndex ; this }
   def getIndex(): Int = index
+
   def setLogger(newLogger: Logger): Bashable = { resultLogger = newLogger ; this }
   def logWith(newLogger: Logger): Bashable = setLogger(newLogger)
 
@@ -94,7 +98,15 @@ abstract class Bashable(cmd: String) {
   }
   def run(): BashResult[String,String] = {
      if (cmd != null) {
-        run(cmd)
+       try {
+         run(cmd)
+       } catch {
+         case e: IOException => {
+           val res = BashResult(-1,"",e.toString)
+           if (resultLogger != null) { resultLogger.info(s"CMD \'$cmd\' encountered IO exception:\n$res") }
+           res
+         }
+       }
      } else {
         null
      }
@@ -160,6 +172,18 @@ case class Cmd(cmd: String) extends Bashable(cmd) {
   // override def run(): BashResult[String, String] = run(cmd)
 }
 
+case class Check(cmd: String) extends Bashable("which " + cmd) {
+  override def run(): BashResult[String,String] = {
+     val res = super.run()
+     if (res.stdout.length > 0) {
+        res
+     } else {
+        BashResult(2, res.stdout, res.stderr)
+     }
+
+  }
+}
+
 object CmdTest {
 
   def main(args: Array[String]): Unit = {
@@ -169,6 +193,18 @@ object CmdTest {
     Cmd("ls -al").logWith(logger) ~ Cmd("tree /data/callback/repo") ~ Cmd("ls happy") !
 
     logger.debug("Test it")
+
+    Check("adb").logWith(logger) !
+
+    Check("ls").logWith(logger) !
+
+    Check("crap").logWith(logger) !
+
+
+    Cmd("jolly").logWith(logger) !
+
+
+    // Cmd("adb").logWith(logger) !
 
   }
 
