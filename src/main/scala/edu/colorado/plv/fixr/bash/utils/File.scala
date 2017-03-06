@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory
 
 case class DeleteFile(pathName: String, ignoreMissing: Boolean) extends Bash {
 
-  override def !(implicit bashLogger: Logger): TryM[BashResult,BashResult] = {
+  override def !(implicit bashLogger: Logger): TryM[Succ,Fail] = {
     bashLogger.debug(s"Attempting to delete ${pathName}")
     val path = new File(pathName)
     val cmd = s"<DeleteFile $pathName>"
@@ -37,7 +37,7 @@ case class DeleteFile(pathName: String, ignoreMissing: Boolean) extends Bash {
 
 case class DeleteDir(pathName: String, ignoreMissing: Boolean) extends Bash {
 
-  override def !(implicit bashLogger: Logger): TryM[BashResult,BashResult] = {
+  override def !(implicit bashLogger: Logger): TryM[Succ,Fail] = {
     bashLogger.debug(s"Attempting to delete ${pathName}")
     val path = new File(pathName)
     val cmd = s"<DeleteFile $pathName>"
@@ -56,7 +56,7 @@ case class DeleteDir(pathName: String, ignoreMissing: Boolean) extends Bash {
 }
 
 case class Delete(pathName: String, ignoreMissing: Boolean) extends Bash {
-  override def !(implicit bashLogger: Logger): TryM[BashResult,BashResult] = {
+  override def !(implicit bashLogger: Logger): TryM[Succ,Fail] = {
     val path = new File(pathName)
     if (path.isFile) return (DeleteFile(pathName, ignoreMissing) !)
     if (path.isDirectory) { return (DeleteDir(pathName, ignoreMissing) !) }
@@ -68,7 +68,7 @@ case class Delete(pathName: String, ignoreMissing: Boolean) extends Bash {
 
 case class CreateDir(pathName: String, recreate: Boolean) extends Bash {
 
-  override def !(implicit bashLogger: Logger): TryM[BashResult,BashResult] = {
+  override def !(implicit bashLogger: Logger): TryM[Succ,Fail] = {
     bashLogger.debug(s"Attempting to create ${pathName}")
     val path = new File(pathName)
     val cmd = s"<CreateDir $pathName>"
