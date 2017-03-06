@@ -2,27 +2,16 @@ package edu.colorado.plv.fixr.bash.android
 
 import com.typesafe.scalalogging.Logger
 import edu.colorado.plv.fixr.bash.utils.{CreateDir, TryM}
-import edu.colorado.plv.fixr.bash.{Cmd, Fail, Succ}
+import edu.colorado.plv.fixr.bash.{Cmd, Fail, Pipeable, Succ}
 import org.slf4j.LoggerFactory
 
 /**
   * Created by edmund on 3/5/17.
   */
 
-object Emulator  {
+object Emulator extends Emulator("emulator")
 
-  val emulator: String = "emulator"
-
-  def init(): Emulator = Emulator(s"$emulator")
-
-  def sdCard(sdCardPath: String): Emulator = init().sdCard(sdCardPath)
-  def name(devName:String, portOpt:Option[Int]): Emulator = init().name(devName, portOpt)
-  def noWindow(): Emulator = init().noWindow()
-  def noWindow(yes: Boolean): Emulator = init().noWindow(yes)
-
-}
-
-case class Emulator(cmd: String) {
+case class Emulator(cmd: String) extends Pipeable {
 
   def extend(raw: String) = Emulator(s"$cmd $raw")
 
@@ -38,9 +27,28 @@ case class Emulator(cmd: String) {
 
   def noWindow(yes: Boolean): Emulator = if (yes) noWindow() else this
 
-  def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = Cmd(cmd) !
+  // def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = Cmd(cmd) !
+
+  override def command(): String = cmd
 
 }
+
+object Adb extends Adb("adb")
+
+case class Adb(cmd: String) extends Pipeable {
+
+  def extend(raw: String) = Adb(s"$cmd $raw")
+
+  def waitForDevice(): Adb = extend("wait-for-device")
+
+  def shell(shcmd: String): Adb = extend(s"shell $shcmd")
+
+  // def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = Cmd(cmd) !
+
+  override def command(): String = cmd
+
+}
+
 
 object TestEmu {
 
@@ -55,7 +63,9 @@ object TestEmu {
      for {
        p0 <- CreateDir(sdCardPath, true) ! ;
        p1 <- Cmd(s"mksdcard -l e 512M $sdCardFile") ! ;
-       p2 <- Emulator.sdCard(sdCardFile).name("pokemon-x86", None).noWindow(false) !
+       p2 <- Emulator.sdCard(sdCardFile).name("pokemon-x86", None).noWindow(false) ! ;
+       p3 <- Adb.waitForDevice() ! ;
+       p4 <- Adb.shell("ps") #| Cmd("grep bootanimation") #| Cmd("wc -1") !
      } yield p1
 
   }

@@ -73,6 +73,19 @@ abstract class Bash {
 
 }
 
+abstract class Pipeable extends Bash {
+
+  def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = this ! command()
+
+  def #| (pipeCmd: String): BCmd = BCmd(command() #| pipeCmd)
+
+  def #| (pipeCmd: Pipeable): BCmd = BCmd(command() #| pipeCmd.command())
+
+  def command(): String
+
+}
+
+
 class BashResultsBuilder {
 
   val out  = new StringBuilder
@@ -93,7 +106,7 @@ class BashResultsBuilder {
 
 }
 
-case class Cmd(cmd: String) extends Bash {
+case class Cmd(cmd: String) extends Pipeable {
 
   /*
   override def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = {
@@ -117,21 +130,25 @@ case class Cmd(cmd: String) extends Bash {
     }
   } */
 
-  override def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = this ! cmd
+  // override def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = this ! cmd
 
-  def #| (pipeCmd: String): BCmd = BCmd(cmd #| pipeCmd)
+  // def #| (pipeCmd: String): BCmd = BCmd(cmd #| pipeCmd)
 
-  def #| (pipeCmd: Cmd): BCmd = BCmd(cmd #| pipeCmd.cmd)
+  // def #| (pipeCmd: Cmd): BCmd = BCmd(cmd #| pipeCmd.cmd)
+
+  override def command(): String = cmd
 
 }
 
-case class BCmd(builder: ProcessBuilder) extends Bash {
+case class BCmd(builder: ProcessBuilder) extends Pipeable {
 
   override def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = this ! builder
 
-  def #| (pipeCmd: String): BCmd = BCmd(builder #| pipeCmd)
+  // def #| (pipeCmd: String): BCmd = BCmd(builder #| pipeCmd)
 
-  def #| (pipeCmd: Cmd): BCmd = BCmd(builder #| pipeCmd.cmd)
+  // def #| (pipeCmd: Cmd): BCmd = BCmd(builder #| pipeCmd.cmd)
+
+  override def command():String = builder.toString
 
 }
 
