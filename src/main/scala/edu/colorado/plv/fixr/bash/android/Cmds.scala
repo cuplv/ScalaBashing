@@ -3,6 +3,7 @@ package edu.colorado.plv.fixr.bash.android
 import com.typesafe.scalalogging.Logger
 import edu.colorado.plv.fixr.bash.utils.{CreateDir, TryM}
 import edu.colorado.plv.fixr.bash.{Cmd, Fail, Succ}
+import org.slf4j.LoggerFactory
 
 /**
   * Created by edmund on 3/5/17.
@@ -45,14 +46,16 @@ object TestEmu {
 
   def main(args: Array[String]): Unit = {
 
+
+    implicit val logger = Logger(LoggerFactory.getLogger("name"))
+
      val sdCardPath = "/data/sd-store"
      val sdCardFile = sdCardPath + "/sdcard.img"
 
      for {
        p0 <- CreateDir(sdCardPath, true) ! ;
-       p1 <- Cmd(s"mksdcard -l e 512M $sdCardFile")
+       p1 <- Cmd(s"mksdcard -l e 512M $sdCardFile") ! ;
        p2 <- Emulator.sdCard(sdCardFile).name("pokemon-x86", None).noWindow(false) !
-
      } yield p1
 
   }
