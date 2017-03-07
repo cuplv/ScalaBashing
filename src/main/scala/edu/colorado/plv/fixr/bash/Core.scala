@@ -1,11 +1,12 @@
 package edu.colorado.plv.fixr.bash
 
-import java.io.IOException
+import java.io.{File, IOException}
 
 import com.typesafe.scalalogging.Logger
 import edu.colorado.plv.fixr.bash.utils.{FailTry, SuccTry, TryM}
 import org.slf4j.LoggerFactory
 
+import scala.concurrent.{ExecutionContext, Future}
 import scala.sys.process._
 import scala.sys.process.ProcessLogger
 
@@ -75,11 +76,21 @@ abstract class Bash {
 
 abstract class Pipeable extends Bash {
 
-  def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = this ! command()
+  override def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = this ! command()
 
   def #| (pipeCmd: String): BCmd = BCmd(command() #| pipeCmd)
 
   def #| (pipeCmd: Pipeable): BCmd = BCmd(command() #| pipeCmd.command())
+
+  def #>> (file: File): BCmd = BCmd(command() #>> file)
+
+  def #>> (fileName: String): BCmd = #>>(new File(fileName))
+
+  def #> (file: File): BCmd = BCmd(command() #> file )
+
+  def #> (fileName: String): BCmd = #>(new File(fileName))
+
+  def & (implicit bashLogger: Logger): TryM[Succ,Fail] = BCmd(command() + " &") !
 
   def command(): String
 
@@ -144,9 +155,21 @@ case class BCmd(builder: ProcessBuilder) extends Pipeable {
 
   override def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = this ! builder
 
-  // def #| (pipeCmd: String): BCmd = BCmd(builder #| pipeCmd)
+  override def #| (pipeCmd: String): BCmd = BCmd(builder #| pipeCmd)
 
-  // def #| (pipeCmd: Cmd): BCmd = BCmd(builder #| pipeCmd.cmd)
+  override def #| (pipeCmd: Pipeable): BCmd = BCmd(builder #| pipeCmd.command())
+
+  override def #> (file: File): BCmd = BCmd(builder #> file)
+
+  override def #>> (file: File): BCmd = BCmd(builder #>> file)
+
+  override def & (implicit bashLogger: Logger): TryM[Succ,Fail] = {
+    implicit val ec = ExecutionContext.global
+    val f = Future {
+       this ! builder
+    }
+    SuccTry(Succ(command(), "Future has been launched", ""))
+  }
 
   override def command():String = builder.toString
 

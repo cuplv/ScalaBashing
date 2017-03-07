@@ -1,72 +1,77 @@
 package edu.colorado.plv.fixr.bash.android
 
+import java.io.File
+
+import scala.io.Source
 import com.typesafe.scalalogging.Logger
-import edu.colorado.plv.fixr.bash.utils.{CreateDir, TryM}
-import edu.colorado.plv.fixr.bash.{Cmd, Fail, Pipeable, Succ}
+import edu.colorado.plv.fixr.bash.utils.{CreateDir, FailTry, SuccTry, TryM}
+import edu.colorado.plv.fixr.bash._
 import org.slf4j.LoggerFactory
 
 /**
   * Created by edmund on 3/5/17.
   */
 
-object Emulator extends Emulator("emulator")
+case class StartEmulator(deviceName:String, emulatorSDPath:String, devicePort:Option[Int], noWindow:Boolean) extends Bash {
 
-case class Emulator(cmd: String) extends Pipeable {
+   def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = {
+      val emulatorSDFile = s"$emulatorSDPath/sdcard.img"
+      val file = new File("tmp")
+      val out = for {
+        p0 <- CreateDir(emulatorSDPath, true) ! ;
+        p1 <- Cmd(s"mksdcard -l e 512M $emulatorSDFile") ! ;
+        p2 <- Emulator.sdCard(emulatorSDFile).name("pokemon-x86",None).noWindow(false) #>> file &
+      } yield p2
 
-  def extend(raw: String) = Emulator(s"$cmd $raw")
+      out match {
+        case SuccTry(Succ(c, o, e)) => {
+           var id = ""
+           var cont = true
+           while(cont) {
+             if( file.exists() ) {
+               val idOutput = Source.fromFile(file).getLines().filter(
+                 _ startsWith "emulator: Serial number of this emulator (for ADB):"
+               )
+               if (idOutput.hasNext) {
+                 id = idOutput.next.split(":").last.trim
+                 cont = false
+               } else {
+                 bashLogger.debug("waiting for device to report in id...")
+                 Thread.sleep(1000)
+               }
+             } else {
+               bashLogger.debug("waiting for device to report in id...")
+               Thread.sleep(1000)
+             }
+           }
+           for {
+             p0 <- Adb.target(id).waitForDevice() ! ;
+             p1 <- Adb.shell("ps") #| Cmd("grep bootanimation") #| Cmd("wc -l") !
+           } yield p1
+           SuccTry(Succ(c, id, o))
+        }
+        case FailTry(Fail(c, ec, o, e)) => {
+           FailTry(Fail(c, ec, o, "Start emulator failed.. aborting"))
+        }
+      }
 
-  def sdCard(sdCardPath: String): Emulator = extend(s"-sdcard $sdCardPath")
-
-  def name(devName:String, portOpt:Option[Int]): Emulator =
-    portOpt match {
-      case Some(port) => extend(s"-port $port @$devName")
-      case None => extend(s"-avd $devName")
-    }
-
-  def noWindow(): Emulator = extend(s"-no-window")
-
-  def noWindow(yes: Boolean): Emulator = if (yes) noWindow() else this
-
-  // def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = Cmd(cmd) !
-
-  override def command(): String = cmd
+   }
 
 }
-
-object Adb extends Adb("adb")
-
-case class Adb(cmd: String) extends Pipeable {
-
-  def extend(raw: String) = Adb(s"$cmd $raw")
-
-  def waitForDevice(): Adb = extend("wait-for-device")
-
-  def shell(shcmd: String): Adb = extend(s"shell $shcmd")
-
-  // def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = Cmd(cmd) !
-
-  override def command(): String = cmd
-
-}
-
 
 object TestEmu {
 
   def main(args: Array[String]): Unit = {
 
-
-    implicit val logger = Logger(LoggerFactory.getLogger("name"))
+    implicit val logger = Logger(LoggerFactory.getLogger("emu-tester"))
 
      val sdCardPath = "/data/sd-store"
-     val sdCardFile = sdCardPath + "/sdcard.img"
 
-     for {
-       p0 <- CreateDir(sdCardPath, true) ! ;
-       p1 <- Cmd(s"mksdcard -l e 512M $sdCardFile") ! ;
-       p2 <- Emulator.sdCard(sdCardFile).name("pokemon-x86", None).noWindow(false) ! ;
-       p3 <- Adb.waitForDevice() ! ;
-       p4 <- Adb.shell("ps") #| Cmd("grep bootanimation") #| Cmd("wc -1") !
-     } yield p1
+     val p0 = for {
+        p0 <- StartEmulator("pokemon-x86", "/data/sd-store", None, false) !
+     } yield p0
+
+     println(s"Here! $p0")
 
   }
 
