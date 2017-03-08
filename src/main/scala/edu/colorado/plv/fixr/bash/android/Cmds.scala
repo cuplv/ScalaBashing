@@ -22,7 +22,7 @@ case class StartEmulator(deviceName:String, emulatorSDPath:String, devicePort:Op
       val out = for {
         p0 <- CreateDir(emulatorSDPath, true) ! ;
         p1 <- Cmd(s"mksdcard -l e 512M $emulatorSDFile") ! ;
-        p2 <- Emulator.sdCard(emulatorSDFile).name("pokemon-x86",None).noWindow(false) #>> file &
+        p2 <- Emulator.sdCard(emulatorSDFile).name(deviceName,devicePort).noWindow(noWindow) #>> file &
       } yield p2
 
       out match {
