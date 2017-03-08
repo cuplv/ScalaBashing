@@ -4,15 +4,17 @@ import java.io.File
 
 import scala.io.Source
 import com.typesafe.scalalogging.Logger
-import edu.colorado.plv.fixr.bash.utils.{CreateDir, FailTry, SuccTry, TryM}
+import edu.colorado.plv.fixr.bash.utils._
 import edu.colorado.plv.fixr.bash._
 import org.slf4j.LoggerFactory
+
+import scala.concurrent.ExecutionContext
 
 /**
   * Created by edmund on 3/5/17.
   */
 
-case class StartEmulator(deviceName:String, emulatorSDPath:String, devicePort:Option[Int], noWindow:Boolean) extends Bash {
+case class StartEmulator(deviceName:String, emulatorSDPath:String, devicePort:Option[Int], noWindow:Boolean) (implicit ec: ExecutionContext) extends Bash {
 
    def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = {
       val emulatorSDFile = s"$emulatorSDPath/sdcard.img"
@@ -46,7 +48,7 @@ case class StartEmulator(deviceName:String, emulatorSDPath:String, devicePort:Op
            }
            for {
              p0 <- Adb.target(id).waitForDevice() ! ;
-             p1 <- Adb.shell("ps") #| Cmd("grep bootanimation") #| Cmd("wc -l") !
+             p1 <- RepeatUntil(Adb.shell("ps") #| Cmd("grep bootanimation") #| Cmd("wc -l")).satisfied(Conditions.succMatches("0")) !
            } yield p1
            SuccTry(Succ(c, id, o))
         }
@@ -63,7 +65,9 @@ object TestEmu {
 
   def main(args: Array[String]): Unit = {
 
-    implicit val logger = Logger(LoggerFactory.getLogger("emu-tester"))
+     implicit val logger = Logger(LoggerFactory.getLogger("emu-tester"))
+
+     implicit val ec = ExecutionContext.global
 
      val sdCardPath = "/data/sd-store"
 
@@ -77,5 +81,14 @@ object TestEmu {
 
 }
 
+object TestWC {
 
+  def main(args: Array[String]): Unit = {
+     implicit val logger = Logger(LoggerFactory.getLogger("emu-tester"))
+     for {
+        p0 <- Cmd("grep crappy README.md") #| Cmd("wc -l") !
+     } yield p0
+  }
+
+}
 

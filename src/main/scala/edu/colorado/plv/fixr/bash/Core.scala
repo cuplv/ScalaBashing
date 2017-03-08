@@ -24,6 +24,8 @@ abstract class BashResult(cmd:String, exitcode: Int, stdout:String, stderr:Strin
 
 case class Succ(cmd:String, stdout:String, stderr:String) extends BashResult(cmd, 0, stdout, stderr)
 
+case class TSucc[T](cmd: String, output: T, stdout:String, stderr: String) extends BashResult(cmd, 0, stdout, stderr)
+
 case class Fail(cmd:String, exitcode: Int, stdout:String, stderr:String) extends BashResult(cmd, exitcode, stdout, stderr)
 
 abstract class Bash {
@@ -90,7 +92,7 @@ abstract class Pipeable extends Bash {
 
   def #> (fileName: String): BCmd = #>(new File(fileName))
 
-  def & (implicit bashLogger: Logger): TryM[Succ,Fail] = BCmd(command() + " &") !
+  def & (implicit bashLogger: Logger, ec: ExecutionContext): TryM[Succ,Fail] = BCmd(command() + " &") !
 
   def command(): String
 
@@ -163,8 +165,7 @@ case class BCmd(builder: ProcessBuilder) extends Pipeable {
 
   override def #>> (file: File): BCmd = BCmd(builder #>> file)
 
-  override def & (implicit bashLogger: Logger): TryM[Succ,Fail] = {
-    implicit val ec = ExecutionContext.global
+  override def & (implicit bashLogger: Logger, ec: ExecutionContext): TryM[Succ,Fail] = {
     val f = Future {
        this ! builder
     }
