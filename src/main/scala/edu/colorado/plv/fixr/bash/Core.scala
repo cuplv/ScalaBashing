@@ -74,6 +74,14 @@ abstract class Bash {
     }
   }
 
+  // Focused return: For Succ, just return Stdout
+  def !!! (implicit bashLogger: Logger): TryM[String,Fail] = {
+    this ! match {
+      case SuccTry(Succ(c, o, e))     => SuccTry(o)
+      case FailTry(Fail(c, ec, o, e)) => FailTry(Fail(c, ec, o, e))
+    }
+  }
+
 }
 
 abstract class Pipeable extends Bash {
@@ -189,6 +197,15 @@ case class Check(tools: Seq[String]) extends Bash {
        bashLogger.debug(s"Not all tools are available.")
        FailTry(Fail(s"which <${tools.mkString(",")}>", 2, "", s"Not all tools are available."))
     }
+  }
+
+}
+
+object Lift {
+
+  def ! (op: => Any): TryM[Succ,Fail] = {
+    val res = op
+    SuccTry(Succ("<Lift>", res.toString, ""))
   }
 
 }
