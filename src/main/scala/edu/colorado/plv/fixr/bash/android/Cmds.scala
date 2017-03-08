@@ -18,7 +18,7 @@ case class StartEmulator(deviceName:String, emulatorSDPath:String, devicePort:Op
 
    def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = {
       val emulatorSDFile = s"$emulatorSDPath/sdcard.img"
-      val file = new File("tmp")
+      val file = GenFile.genNewFile() // new File("tmp")
       val out = for {
         p0 <- CreateDir(emulatorSDPath, true) ! ;
         p1 <- Cmd(s"mksdcard -l e 512M $emulatorSDFile") ! ;
@@ -46,11 +46,12 @@ case class StartEmulator(deviceName:String, emulatorSDPath:String, devicePort:Op
                Thread.sleep(1000)
              }
            }
+           file.delete()
            for {
              p0 <- Adb.target(id).waitForDevice() ! ;
              p1 <- RepeatUntil(Adb.shell("ps") #| Cmd("grep bootanimation") #| Cmd("wc -l")).satisfied(Conditions.succMatches("0")) !
            } yield p1
-           SuccTry(Succ(c, id, o))
+           SuccTry(Succ(c, id, e))
         }
         case FailTry(Fail(c, ec, o, e)) => {
            FailTry(Fail(c, ec, o, "Start emulator failed.. aborting"))
@@ -58,6 +59,14 @@ case class StartEmulator(deviceName:String, emulatorSDPath:String, devicePort:Op
       }
 
    }
+
+  /*
+   def !!! (implicit bashLogger: Logger): TryM[String,Fail] = {
+      this ! match {
+        case SuccTry(Succ(c, o, e))     => SuccTry(o)
+        case FailTry(Fail(c, ec, o, e)) => FailTry(Fail(c, ec, o, e))
+      }
+   } */
 
 }
 
@@ -72,7 +81,8 @@ object TestEmu {
      val sdCardPath = "/data/sd-store"
 
      val p0 = for {
-        p0 <- StartEmulator("pokemon-x86", "/data/sd-store", None, false) !
+        p0 <- StartEmulator("pokemon-x86", "/data/sd-store", None, false) !!! ;
+        p1 <- Lift ! println(s"Lifted: $p0")
      } yield p0
 
      println(s"Here! $p0")

@@ -7,6 +7,8 @@ import edu.colorado.plv.fixr.bash.{Bash, BashResult, Fail, Succ}
 import org.apache.commons.io.FileUtils
 import org.slf4j.LoggerFactory
 
+import scala.util.Random
+
 
 /**
   * Created by edmund on 3/4/17.
@@ -86,6 +88,19 @@ case class CreateDir(pathName: String, recreate: Boolean) extends Bash {
     val succ = path.mkdirs()
     bashLogger.debug( s"Path ${pathName} created: $succ" )
     if (succ) SuccTry(Succ(cmd,s"Path ${pathName} created: $succ","")) else FailTry(Fail(cmd, 2, "", "Failed to create directories"))
+  }
+
+}
+
+object GenFile {
+
+  def genNewFile(): File = {
+     val rand = Random
+     while(true) {
+        val file = new File(s"tmp_${rand.nextInt()}_${System.currentTimeMillis/1000}")
+        if (!file.exists()) return file
+     }
+     return null
   }
 
 }
