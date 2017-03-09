@@ -19,28 +19,31 @@ case class StartEmulator(deviceName:String, emulatorSDPath:String, devicePort:Op
   def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = {
     val emulatorSDFile = s"$emulatorSDPath/sdcard.img"
     val file = GenFile.genNewFile() // new File("tmp")
-    val out = for {
+    for {
+      // Create SD Card for emulator
       p0 <- CreateDir(emulatorSDPath, true) ! ;
       p1 <- Cmd(s"mksdcard -l e 512M $emulatorSDFile") ! ;
+
+      // Start the emulator, pipe stdout to tmp file 'file' and fork a seperate process
       p2 <- Emulator.sdCard(emulatorSDFile).name(deviceName,devicePort).noWindow(noWindow) #>> file & ;
+
+      // Repeatedly poll 'file' until serial number is visible, after which delete the tmp file and retrieve the emulator serial number
       p3 <- repeat (Cmd(s"cat ${file.getPath}")) until {
         case SuccTry(Succ(c, o, e)) => o contains "emulator: Serial number of this emulator (for ADB):"
         case default => false
       } ;
       p4 <- Lift ! file.delete() ;
-      p5 <- Lift ! p3.stdout.split("\n").filter(_ contains "emulator: Serial number of this emulator (for ADB):")(0).split(":").last.trim() ;
-      p6 <- Adb.target(p5.stdout).waitForDevice() ! ;
-      p7 <- repeat (Adb.shell("ps") #| Cmd("grep bootanimation") #| Cmd("wc -l")) until {
+      emuID <- Lift !!! p3.stdout.split("\n").filter(_ contains "emulator: Serial number of this emulator (for ADB):")(0).split(":").last.trim() ;
+
+      // Wait for device until it has started
+      p6 <- Adb.target(emuID).waitForDevice() ! ;
+
+      // Repeatedly poll the device's 'ps' list and wait until bootanimation has terminated
+      p7 <- repeat (Adb.target(emuID).shell("ps") #| Cmd("grep bootanimation") #| Cmd("wc -l")) until {
         case SuccTry(Succ(c, o, e)) => o.trim() == "0"
         case default => false
-      } ;
-      p8 <- Lift ! p5.stdout
-    } yield p8
-
-    out match {
-      case SuccTry(Succ(c, o, e))     => SuccTry(Succ("<StartEmulator>", o, e))
-      case FailTry(Fail(c, ec, o, e)) => FailTry(Fail("<StartEmulator>", ec, o, "Start Emulator Failed"))
-    }
+      }
+    } yield Succ("<StartEmulator>", emuID, "")
   }
    /*
    def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = {

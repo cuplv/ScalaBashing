@@ -208,6 +208,11 @@ object Lift {
     SuccTry(Succ("<Lift>", res.toString, ""))
   }
 
+  def !!! (op: => Any): TryM[String,Fail] = {
+    val res = op
+    SuccTry(res.toString)
+  }
+
 }
 
 object Tester {
