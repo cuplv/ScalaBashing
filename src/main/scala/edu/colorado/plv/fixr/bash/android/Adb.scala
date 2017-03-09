@@ -1,6 +1,8 @@
 package edu.colorado.plv.fixr.bash.android
 
-import edu.colorado.plv.fixr.bash.Pipeable
+import com.typesafe.scalalogging.Logger
+import edu.colorado.plv.fixr.bash.{Check, Fail, Pipeable, Succ}
+import edu.colorado.plv.fixr.bash.utils.TryM
 
 /**
   * Created by edmund on 3/7/17.
@@ -9,6 +11,8 @@ import edu.colorado.plv.fixr.bash.Pipeable
 object Adb extends Adb("adb")
 
 case class Adb(cmd: String) extends Pipeable {
+
+  override def ? (implicit bashLogger: Logger): TryM[Succ,Fail] = Check(Seq("adb")) !
 
   def extend(raw: String) = Adb(s"$cmd $raw")
 
@@ -21,5 +25,7 @@ case class Adb(cmd: String) extends Pipeable {
   // def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = Cmd(cmd) !
 
   override def command(): String = cmd
+
+  def kill (implicit bashLogger: Logger): TryM[Succ,Fail] = extend("emu kill") !
 
 }

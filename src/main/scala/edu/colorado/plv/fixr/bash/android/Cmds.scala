@@ -16,7 +16,9 @@ import scala.concurrent.ExecutionContext
 
 case class StartEmulator(deviceName:String, emulatorSDPath:String, devicePort:Option[Int], noWindow:Boolean) (implicit ec: ExecutionContext) extends Bash {
 
-  def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = {
+  override def ? (implicit bashLogger: Logger): TryM[Succ,Fail] = Check(Seq("adb","emulator","mksdcard")) !
+
+  override def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = {
     val emulatorSDFile = s"$emulatorSDPath/sdcard.img"
     val file = GenFile.genNewFile() // new File("tmp")
     for {
@@ -45,63 +47,6 @@ case class StartEmulator(deviceName:String, emulatorSDPath:String, devicePort:Op
       }
     } yield Succ("<StartEmulator>", emuID, "")
   }
-   /*
-   def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = {
-      val emulatorSDFile = s"$emulatorSDPath/sdcard.img"
-      val file = GenFile.genNewFile() // new File("tmp")
-      val out = for {
-        p0 <- CreateDir(emulatorSDPath, true) ! ;
-        p1 <- Cmd(s"mksdcard -l e 512M $emulatorSDFile") ! ;
-        p2 <- Emulator.sdCard(emulatorSDFile).name(deviceName,devicePort).noWindow(noWindow) #>> file &
-      } yield p2
-
-      out match {
-        case SuccTry(Succ(c, o, e)) => {
-           var id = ""
-           var cont = true
-           while(cont) {
-             if( file.exists() ) {
-               val idOutput = Source.fromFile(file).getLines().filter(
-                 _ startsWith "emulator: Serial number of this emulator (for ADB):"
-               )
-               if (idOutput.hasNext) {
-                 id = idOutput.next.split(":").last.trim
-                 cont = false
-               } else {
-                 bashLogger.debug("waiting for device to report in id...")
-                 Thread.sleep(1000)
-               }
-             } else {
-               bashLogger.debug("waiting for device to report in id...")
-               Thread.sleep(1000)
-             }
-           }
-           file.delete()
-           for {
-             p0 <- Adb.target(id).waitForDevice() ! ;
-             p1 <- repeat (Adb.shell("ps") #| Cmd("grep bootanimation") #| Cmd("wc -l")) until {
-               _ match {
-                 case SuccTry(Succ(c, o, e)) => o.trim() == "0"
-                 case default => false
-               }
-             }
-           } yield p1
-           SuccTry(Succ(c, id, e))
-        }
-        case FailTry(Fail(c, ec, o, e)) => {
-           FailTry(Fail(c, ec, o, "Start emulator failed.. aborting"))
-        }
-      }
-
-   } */
-
-  /*
-   def !!! (implicit bashLogger: Logger): TryM[String,Fail] = {
-      this ! match {
-        case SuccTry(Succ(c, o, e))     => SuccTry(o)
-        case FailTry(Fail(c, ec, o, e)) => FailTry(Fail(c, ec, o, e))
-      }
-   } */
 
 }
 
