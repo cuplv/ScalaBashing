@@ -18,23 +18,23 @@ object Conditions {
 
 }
 
-case class RepeatUntil(op: Bash) extends Bash {
+case class repeat(op: Bash) extends Bash {
 
   var condition = (x:TryM[Succ,Fail]) => false
   var waitTime = 1000
-  var tries = -1
+  var tries = 10
 
-  def satisfied(c: TryM[Succ,Fail] => Boolean) = { condition = c ; this }
+  def until(c: TryM[Succ,Fail] => Boolean) (implicit bashLogger: Logger): TryM[Succ,Fail] = { condition = c ; this ! }
 
-  def wait(time: Int): RepeatUntil = { waitTime = time ; this }
+  def wait(time: Int): repeat = { waitTime = time ; this }
 
-  def times(number: Int): RepeatUntil = { tries = number ; this }
+  def times(number: Int): repeat = { tries = number ; this }
 
   override def !(implicit bashLogger: Logger): TryM[Succ, Fail] = {
     var count = 0
     while (true) {
        val res = for{ p <- op ! } yield p
-       if (condition(res)) return SuccTry(Succ("<RepeatUntil>", "Condition satisfied", ""))
+       if (condition(res)) return res
        count += 1
        if (tries > 0 && count > tries) return SuccTry(Succ("<RepeatUntil>", "Exceeded number of tries", ""))
        Thread.sleep(waitTime)
