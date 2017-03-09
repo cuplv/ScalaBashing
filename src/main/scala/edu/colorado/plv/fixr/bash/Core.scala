@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.{ExecutionContext, Future}
 import scala.sys.process._
 import scala.sys.process.ProcessLogger
+import scala.util.Try
 
 /**
   * Created by edmund on 3/5/17.
@@ -29,6 +30,8 @@ case class TSucc[T](cmd: String, output: T, stdout:String, stderr: String) exten
 case class Fail(cmd:String, exitcode: Int, stdout:String, stderr:String) extends BashResult(cmd, exitcode, stdout, stderr)
 
 abstract class Bash {
+
+  def ? (implicit bashLogger: Logger): TryM[Succ,Fail] = SuccTry(Succ("<Default Check>", "Passed by default", ""))
 
   def ! (implicit bashLogger: Logger): TryM[Succ,Fail]
 
@@ -100,7 +103,12 @@ abstract class Pipeable extends Bash {
 
   def #> (fileName: String): BCmd = #>(new File(fileName))
 
-  def & (implicit bashLogger: Logger, ec: ExecutionContext): TryM[Succ,Fail] = BCmd(command() + " &") !
+  def & (implicit bashLogger: Logger, ec: ExecutionContext): TryM[Succ,Fail] = {
+    val f = Future {
+      this ! command()
+    }
+    SuccTry(Succ(command(), "Future has been launched", ""))
+  }
 
   def command(): String
 
@@ -198,6 +206,16 @@ case class Check(tools: Seq[String]) extends Bash {
        FailTry(Fail(s"which <${tools.mkString(",")}>", 2, "", s"Not all tools are available."))
     }
   }
+
+}
+
+object Thunk {
+  def make(tryM: => TryM[Succ,Fail]): Thunk = new Thunk(tryM)
+}
+
+class Thunk(tryM: => TryM[Succ,Fail]) extends Bash {
+
+  override def !(implicit bashLogger: Logger): TryM[Succ, Fail] = tryM
 
 }
 
