@@ -85,6 +85,11 @@ abstract class Bash {
     }
   }
 
+  def & (implicit bashLogger: Logger, ec: ExecutionContext): TryM[Future[TryM[Succ,Fail]],Fail] = {
+    val fut:Future[TryM[Succ,Fail]] = Future { this ! }
+    SuccTry(fut)
+  }
+
 }
 
 abstract class Pipeable extends Bash {
@@ -103,11 +108,9 @@ abstract class Pipeable extends Bash {
 
   def #> (fileName: String): BCmd = #>(new File(fileName))
 
-  def & (implicit bashLogger: Logger, ec: ExecutionContext): TryM[Succ,Fail] = {
-    val f = Future {
-      this ! command()
-    }
-    SuccTry(Succ(command(), "Future has been launched", ""))
+ override  def & (implicit bashLogger: Logger, ec: ExecutionContext): TryM[Future[TryM[Succ,Fail]],Fail] = {
+    val fut = Future { this ! command() }
+    SuccTry(fut)
   }
 
   def command(): String
@@ -181,11 +184,9 @@ case class BCmd(builder: ProcessBuilder) extends Pipeable {
 
   override def #>> (file: File): BCmd = BCmd(builder #>> file)
 
-  override def & (implicit bashLogger: Logger, ec: ExecutionContext): TryM[Succ,Fail] = {
-    val f = Future {
-       this ! builder
-    }
-    SuccTry(Succ(command(), "Future has been launched", ""))
+  override def & (implicit bashLogger: Logger, ec: ExecutionContext): TryM[Future[TryM[Succ,Fail]],Fail] = {
+    val fut:Future[TryM[Succ,Fail]] = Future { this ! builder }
+    SuccTry(fut)
   }
 
   override def command():String = builder.toString

@@ -58,7 +58,7 @@ case class repeat(op: Bash) extends Bash {
 
 }
 
-case class tryDo(op: Bash) extends Bash {
+case class doTry(op: Bash) extends Bash {
 
   var contingencies: Fail => Bash = (f:Fail) => Cmd(s"echo Try failed: ${f.stderr}")
 

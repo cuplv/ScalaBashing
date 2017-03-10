@@ -6,6 +6,7 @@ import edu.colorado.plv.fixr.bash._
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 /**
   * Created by edmund on 3/7/17.
@@ -128,16 +129,55 @@ object TestEmulator {
 
     val avdName = "scala-test-again-x86"
     val emuID = for {
-      pz <- tryDo (Android.deleteAVD(avdName)) ! ;
-      p0 <- Cmd("echo no") #| Android.createAVD(avdName, true).x86.api23 ! ;
-      emuID <- Emulator.name(avdName, Some(5560)).sdCard("/data/sdStore").noWindow(false).start !!! ;
-      p1 <- Lift ! println(s"Lifted: $emuID") ;
-      p2 <- Lift ! Thread.sleep(10000) ;
+      pz <- doTry (Android.deleteAVD(avdName)) !;
+      p0 <- Cmd("echo no") #| Android.createAVD(avdName, true).x86.api23 !;
+      emuID <- Emulator.name(avdName, Some(5560)).sdCard("/data/sdStore").noWindow(false).start !!!;
+      p1 <- Lift ! println(s"Lifted: $emuID");
+      p2 <- Lift ! Thread.sleep(10000);
       p3 <- Adb.target(emuID).kill
     } yield emuID
 
     println(s"Here! $emuID")
 
+
+  }
+
+}
+
+object TestManyEmulator {
+
+  def main(args: Array[String]): Unit = {
+
+    implicit val logger = Logger(LoggerFactory.getLogger("emu-tester"))
+
+    implicit val ec = ExecutionContext.global
+
+    val sdCardPath = "/data/sd-store"
+    val avdName = "scala-test-again-x86"
+
+    val emus = Seq(("scala-1","/data/sd-store/scala-1",5560),("scala-2","/data/sd-store/scala-2",5570))
+
+    emus.map {
+      (avd:(String,String,Int)) => {
+        val avdName = avd._1
+        val sdPath  = avd._2
+        val port    = avd._3
+        for {
+          pz <- doTry (Android.deleteAVD(avdName)) !;
+          p0 <- Cmd("echo no") #| Android.createAVD(avdName, true).x86.api23 !;
+          emuID <- Emulator.name(avdName, Some(port)).sdCard(sdPath).noWindow(false).start !!!
+        } yield emuID
+      }
+    }.map {
+       _ match {
+         case SuccTry(emuID) => {
+           logger.info(s"Successfully started $emuID")
+           Thread.sleep(20000)
+           Adb.target(emuID).kill
+         }
+         case FailTry(Fail(c,ec,o,e)) => logger.error(s"Failed: $e")
+       }
+    }
 
   }
 

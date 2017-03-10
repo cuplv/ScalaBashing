@@ -29,3 +29,4 @@ case class Adb(cmd: String) extends Pipeable {
   def kill (implicit bashLogger: Logger): TryM[Succ,Fail] = extend("emu kill") !
 
 }
+
