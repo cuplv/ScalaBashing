@@ -29,7 +29,11 @@ adb shell am instrument -w -r -e eventTrace <ProtoBuf Trace>
 com.peilunzhang.contractiontimerdistilled.test/edu.colorado.plv.chimp.driver.ChimpJUnitRunner
 */
 
-object AmInstrument extends AmInstrument("adb shell am instrument")
+object AmInstrument extends AmInstrument("adb shell am instrument") {
+
+  def target(deviceName: String): AmInstrument = AmInstrument(s"adb -s $deviceName shell am instrument")
+
+}
 
 case class AmInstrument(cmd:String) extends Pipeable {
 
@@ -60,14 +64,14 @@ object TestAm {
     implicit val logger = Logger(LoggerFactory.getLogger("am-tester"))
     implicit val ec = ExecutionContext.global
 
-    val proto = "Cg8IARILCAESBwoFbG9naW4KBggCGgIIAgoGCAIaAggFCgYIARICCAYKFwgBEhMIAyIPCgd1c2VyYm94EgR0ZXN0CgYIAhoCCAIKBggCGgIIBQoGCAESAggGChYIARISCAMiDgoGcHdkYm94EgQxMjM0CgYIAhoCCAcKBggBEgIIBgoMCAESCAgBEgQKAkdvCgYIARICCAYKBggBEgIIBg=="
+    val proto = "ChMIARIPCAESCwoJCAIaBWxvZ2luCgYIAhoCCAMKBggCGgIIBQoGCAESAggIChsIARIXCAY6EwoLCAIaB3VzZXJib3gSBHRlc3QKBggCGgIIBgoGCAIaAggHCgYIARICCAgKGggBEhYIBjoSCgoIAhoGcHdkYm94EgQxMjM0CgYIAhoCCAQKBggCGgIIBQoGCAESAggIChAIARIMCAESCAoGCAIaAkdv"
     val instrOut = for{
       appAPKout  <- Aapt.home("/usr/local/android-sdk/build-tools/24.0.3").apkInfo("/data/chimpCheck/app-debug.apk") !!! ;
       testAPKout <- Aapt.home("/usr/local/android-sdk/build-tools/24.0.3").apkInfo("/data/chimpCheck/app-debug-androidTest.apk") !!! ;
       appInfo  <- Aapt.parse(appAPKout) ;
       testInfo <- Aapt.parse(testAPKout) ;
-      instrOut <- AmInstrument.raw().sync().debug(false).extra("eventTrace",proto)
-                              .components( appInfo.packageName, "TraceNoCrash", testInfo.packageName,"edu.colorado.plv.chimp.driver.ChimpJUnitRunner") !
+      instrOut <- AmInstrument.target("emulator-5554").raw().sync().debug(false).extra("eventTrace",proto)
+                              .components( appInfo.packageName, "TestExpresso", testInfo.packageName,"edu.colorado.plv.chimp.driver.ChimpJUnitRunner") !
     } yield instrOut
 
     println(s"Done! $instrOut")

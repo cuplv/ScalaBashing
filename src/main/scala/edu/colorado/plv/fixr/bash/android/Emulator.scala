@@ -12,7 +12,28 @@ import scala.util.{Failure, Success}
   * Created by edmund on 3/7/17.
   **/
 
-object Emulator extends Emulator("emulator")
+object Emulator extends Emulator("emulator") {
+
+  def quickStart(avdName:String, portOpt:Option[Int], sdPath:String, display:Boolean)
+                (implicit bashLogger: Logger, ec: ExecutionContext): TryM[String,Fail] = {
+     Emulator.name(avdName, portOpt).sdCard(sdPath).noWindow(!display).start !!!
+  }
+
+  def quickCreateAndStart(avdName:String, portOpt:Option[Int], sdPath:String, display:Boolean)
+                         (implicit bashLogger: Logger, ec: ExecutionContext): TryM[String,Fail] = {
+    for {
+      pz <- doTry (Android.deleteAVD(avdName)) !;
+      p0 <- Cmd("echo no") #| Android.createAVD(avdName, true).x86.api23 !;
+      emuID <- quickStart(avdName, portOpt, sdPath, display);
+      p1 <- Lift ! bashLogger.info(s"Started emulator: $emuID")
+    } yield emuID
+  }
+
+  def stop(emuID:String) (implicit bashLogger: Logger): TryM[Succ,Fail] = {
+    Adb.target(emuID).kill !
+  }
+
+}
 
 case class Emulator(cmd: String) extends Pipeable {
 
@@ -134,7 +155,7 @@ object TestEmulator {
       emuID <- Emulator.name(avdName, Some(5560)).sdCard("/data/sdStore").noWindow(false).start !!!;
       p1 <- Lift ! println(s"Lifted: $emuID");
       p2 <- Lift ! Thread.sleep(10000);
-      p3 <- Adb.target(emuID).kill
+      p3 <- Adb.target(emuID).kill !
     } yield emuID
 
     println(s"Here! $emuID")
@@ -173,7 +194,7 @@ object TestManyEmulator {
          case SuccTry(emuID) => {
            logger.info(s"Successfully started $emuID")
            Thread.sleep(20000)
-           Adb.target(emuID).kill
+           Adb.target(emuID).kill !
          }
          case FailTry(Fail(c,ec,o,e)) => logger.error(s"Failed: $e")
        }
