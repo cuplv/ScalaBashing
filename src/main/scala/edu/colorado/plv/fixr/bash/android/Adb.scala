@@ -22,11 +22,13 @@ case class Adb(cmd: String) extends Pipeable {
 
   def shell(shcmd: String): Adb = extend(s"shell $shcmd")
 
-  // def ! (implicit bashLogger: Logger): TryM[Succ,Fail] = Cmd(cmd) !
+  def uninstall(packageName: String): Adb = extend(s"uninstall $packageName")
+
+  def install(apkPath: String): Adb = extend(s"install $apkPath")
 
   override def command(): String = cmd
 
-  def kill (implicit bashLogger: Logger): TryM[Succ,Fail] = extend("emu kill") !
+  def kill (implicit bashLogger: Logger): Adb = extend("emu kill")
 
 }
 
