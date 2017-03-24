@@ -94,10 +94,13 @@ case class CreateDir(pathName: String, recreate: Boolean) extends Bash {
 
 object GenFile {
 
-  def genNewFile(): File = {
+  def genNewFile(): File = genNewFile("")
+
+  def genNewFile(ext:String): File = {
      val rand = Random
      while(true) {
-        val file = new File(s"tmp_${rand.nextInt()}_${System.currentTimeMillis/1000}")
+        val fext = if (ext.length > 0) s".$ext" else ""
+        val file = new File(s"tmp_${rand.nextInt()}_${System.currentTimeMillis/1000}$fext")
         if (!file.exists()) return file
      }
      return null
