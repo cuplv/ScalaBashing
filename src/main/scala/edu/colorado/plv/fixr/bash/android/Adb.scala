@@ -22,6 +22,8 @@ case class Adb(cmd: String) extends Pipeable {
 
   def shell(shcmd: String): Adb = extend(s"shell $shcmd")
 
+  def push(src:String, dest:String): Adb = extend(s"push $src $dest")
+
   def uninstall(packageName: String): Adb = extend(s"uninstall $packageName")
 
   def install(apkPath: String): Adb = extend(s"install $apkPath")
