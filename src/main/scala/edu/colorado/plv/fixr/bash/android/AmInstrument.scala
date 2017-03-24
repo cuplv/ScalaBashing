@@ -1,7 +1,7 @@
 package edu.colorado.plv.fixr.bash.android
 
 import com.typesafe.scalalogging.Logger
-import edu.colorado.plv.fixr.bash.utils.{GenFile, TryM}
+import edu.colorado.plv.fixr.bash.utils.{DeleteFile, GenFile, TryM}
 import edu.colorado.plv.fixr.bash._
 import org.slf4j.LoggerFactory
 
@@ -69,7 +69,8 @@ case class AmInstrument(cmd:String) extends Pipeable {
           p1 <- Cmd(s"echo ${cmd.split("shell")(1).trim()}") #>> tmpFile ! ;
           p2 <- Cmd(s"chmod +x $tmpPath") ! ;
           p3 <- Adb.push(tmpPath ,"/data/local/tmp") ! ;
-          p4 <- Adb.shell(s"sh /data/local/tmp/$tmpPath") !
+          p4 <- Adb.shell(s"sh /data/local/tmp/$tmpPath") ! ;
+          p5 <- DeleteFile(tmpPath, false) !
        } yield p4
     }
   }
