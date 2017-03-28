@@ -70,7 +70,8 @@ case class AmInstrument(cmd:String) extends Pipeable {
           p2 <- Cmd(s"chmod +x $tmpPath") ! ;
           p3 <- Adb.push(tmpPath ,"/data/local/tmp") ! ;
           p4 <- Adb.shell(s"sh /data/local/tmp/$tmpPath") ! ;
-          p5 <- DeleteFile(tmpPath, false) !
+          p5 <- DeleteFile(tmpPath, false) ! ;
+          p6 <- Adb.shell(s"rm /data/local/tmp/$tmpPath") !
        } yield p4
     }
   }
