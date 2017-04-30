@@ -8,11 +8,11 @@ import com.typesafe.scalalogging.Logger
 sealed trait TryM[+R,E] {
   def flatMap[NR](f: R => TryM[NR,E]) (implicit logger:Logger): TryM[NR,E] = this match {
     case SuccTry(r) => {
-      logger.info(r.toString)
+      // logger.debug(r.toString)
       f(r)
     }
     case FailTry(e) => {
-      logger.error(e.toString)
+      // logger.error(e.toString)
       FailTry(e)
     }
   }

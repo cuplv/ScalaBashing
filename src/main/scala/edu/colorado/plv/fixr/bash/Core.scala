@@ -36,42 +36,42 @@ abstract class Bash {
   def ! (implicit bashLogger: Logger): TryM[Succ,Fail]
 
   def ! (cmd: String) (implicit bashLogger: Logger): TryM[Succ,Fail] = {
-    bashLogger.debug(s"Attempting to run command \'$cmd\'")
+    // bashLogger.debug(s"Attempting to run command \'$cmd\'")
     val resultBuilder = new BashResultsBuilder
     val logger = ProcessLogger(
       (o: String) => resultBuilder.addOutMsg( o ),
       (e: String) => resultBuilder.addErrMsg( e ) )
     try {
       val res = resultBuilder.mkResults(cmd, cmd ! logger)
-      bashLogger.debug(s"Ran command, outcome:\n$res")
+      // bashLogger.debug(s"Ran command, outcome:\n$res")
       res match {
         case Succ(c, o, e) => SuccTry(Succ(c, o, e))
         case Fail(c, ec, o , e) => FailTry(Fail(c, ec, o , e))
       }
     } catch {
       case e: IOException => {
-        bashLogger.debug(s"IO Exception encountered: ${e.toString}")
+        // bashLogger.debug(s"IO Exception encountered: ${e.toString}")
         FailTry( Fail(cmd, 2, "", s"IO Exception encountered: ${e.toString}") )
       }
     }
   }
 
   def ! (builder: ProcessBuilder) (implicit bashLogger: Logger): TryM[Succ,Fail] = {
-    bashLogger.debug(s"Attempting to run command \'${builder.toString}\'")
+    // bashLogger.debug(s"Attempting to run command \'${builder.toString}\'")
     val resultBuilder = new BashResultsBuilder
     val logger = ProcessLogger(
       (o: String) => resultBuilder.addOutMsg( o ),
       (e: String) => resultBuilder.addErrMsg( e ) )
     try {
       val res = resultBuilder.mkResults(builder.toString, builder ! logger)
-      bashLogger.debug(s"Ran command, outcome:\n$res")
+      // bashLogger.debug(s"Ran command, outcome:\n$res")
       res match {
         case Succ(c, o, e) => SuccTry(Succ(c, o, e))
         case Fail(c, ec, o , e) => FailTry(Fail(c, ec, o , e))
       }
     } catch {
       case e: IOException => {
-        bashLogger.debug(s"IO Exception encountered: ${e.toString}")
+        // bashLogger.debug(s"IO Exception encountered: ${e.toString}")
         FailTry( Fail(builder.toString, 2, "", s"IO Exception encountered: ${e.toString}") )
       }
     }
